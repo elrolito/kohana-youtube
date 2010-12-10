@@ -14,7 +14,6 @@ abstract class YouTube_Data {
     // Object info
     protected $_cache_key;
     protected $_url;
-    protected $_data;
     
     // pagination info
     protected $_pagination = array();
@@ -33,9 +32,23 @@ abstract class YouTube_Data {
         $this->_cache_key = $name;
         
         // Initialize data
-        $this->_initialize();
+        $data = $this->_initialize();
+        
+        // set meta properties
+        $this->_pagination = array(
+                'total_items'    => $data->totalItems,
+                'items_per_page' => $data->itemsPerPage,
+                'offset'         => $data->startIndex - 1,
+                'limit'          => $data->totalItems
+            );
     }
     
+    /**
+     * Initialize the data for the class
+     * Makes an API call if needed
+     *
+     * @return mixed 
+     */
     protected function _initialize()
     {
          // check if a result type is set
@@ -45,41 +58,36 @@ abstract class YouTube_Data {
          }
  
          // check to see if data is cached first
-        $feed = Kohana::cache($this->_cache_key);
+        $data = Kohana::cache($this->_cache_key);
 
         // Get fresh feed
-        if ($feed === NULL OR ! YouTube::$use_cache)
+        if ($data === NULL OR ! YouTube::$use_cache)
         {
             try {
                 // Remote call the feed url
                 $feed = Remote::get($this->_url);
-
-                // Cache the response
-                Kohana::cache($this->_cache_key, $feed, 300);
             } catch (Exception $e) {
                 // Do nothing for now
                 // @todo some error checking
                 return FALSE;
             }
+            
+            $json = json_decode($feed);
+            
+            if ($json !== NULL)
+            {
+                $data = $json->data;
+            }
+            else
+            {
+                return FALSE;
+            }
         }
 
-        $json = json_decode($feed);
-
-        if ($json !== NULL)
-        {
-            $data = $json->data;
-
-            // store a copy of the decoded data locally
-            $this->_data = serialize($data);
-
-            // set meta properties
-            $this->_pagination = array(
-                    'total_items'    => $data->totalItems,
-                    'items_per_page' => $data->itemsPerPage,
-                    'offset'         => $data->startIndex - 1,
-                    'limit'          => $data->totalItems
-                );
-        }
+        // cache the data
+        Kohana::cache($this->_cache_key, $data, 300);
+        
+        return $data;
     }
     
     /**
@@ -129,7 +137,7 @@ abstract class YouTube_Data {
     {
         $result_type = $this->_result_type;
         
-        $data = unserialize($this->_data);
+        $data = $this->_initialize();
         
         // paginate items
         $items = array_slice(
@@ -151,15 +159,15 @@ abstract class YouTube_Data {
     {
         $search_ids = array();
         
-        $data = unserialize($this->_data);
+        $data = $this->_initialize();
         
         foreach ($data->items as $item)
         {
-            $search_ids[] = ($this->_result_type === YouTube::PLAYLIST_RESULT) ?
+            $search_ids[] = ($this->_result_type === YouTube::VIDEO_RESULT) ?
                 $item->video->id : $item->id;
         }
         
-        $index = array_search($id, $search_ids);
+        $index = (is_int($id)) ? $id : array_search($id, $search_ids);
         
         $result_type = $this->_result_type;
         

@@ -24,14 +24,14 @@ class YouTube_Playlist_Video_Data extends YouTube_Data {
     
     protected function _initialize()
     {
-        parent::_initialize();
-        
-        $data = unserialize($this->_data);
+        $data = parent::_initialize();
         
         $this->_meta = array(
                 'id' => $data->id,
                 'title' => $data->title,
                 'description' => $data->description
             );
+            
+        return $data;
     }
 }
