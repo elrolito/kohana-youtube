@@ -13,5 +13,15 @@ class YouTube_Playlist_Video_Data extends YouTube_Data {
         $this->_result_type = YouTube::PLAYLIST_VIDEOS;
         
         parent::__construct($id, $this->_url);
+        
+        $data = unserialize($this->_data);
+        
+        $meta = array(
+                'id' => $data->id,
+                'title' => $data->title,
+                'description' => $data->description
+            );
+            
+        $this->_meta = Arr::merge($meta, $this->_meta);
     }
 }

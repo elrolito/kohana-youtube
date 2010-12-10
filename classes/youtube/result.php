@@ -1,6 +1,6 @@
 <?php defined('SYSPATH') or die('No direct script access.');
 
-class YouTube_Result implements Countable, Iterator {
+class YouTube_Result implements Countable, Iterator, ArrayAccess {
     
     protected $_items;
     
@@ -41,5 +41,32 @@ class YouTube_Result implements Countable, Iterator {
     public function items()
     {
         return $this->_items;
+    }
+    
+    public function offsetSet($offset, $value)
+    {
+        if (is_null($offset))
+        {
+            $this->_items[] = $value;
+        }
+        else 
+        {
+            $this->_items[$offset] = $value;
+        }
+    }
+    
+    public function offsetExists($offset)
+    {
+        return isset($this->_items[$offset]);
+    }
+    
+    public function offsetUnset($offset)
+    {
+        unset($this->_items[$offset]);
+    }
+    
+    public function offsetGet($offset)
+    {
+        return isset($this->_items[$offset]) ? $this->_items[$offset] : null;
     }
 }

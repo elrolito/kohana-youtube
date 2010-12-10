@@ -17,8 +17,31 @@ class YouTube_Data {
     
     protected $_meta = array();
     
+    /**
+     * What kind of data will be returned,
+     * either YouTube::USER_PLAYLISTS, or YouTube::PLAYLIST_VIDEOS
+     *
+     * @var string data type to return
+     */
+    protected $_result_type = '';
+    
+    private $_result_class;
+    
     public function __construct($name, $url)
     {
+        // set the class for the items being returned
+        switch ($this->_result_type)
+        {
+            case YouTube::USER_PLAYLISTS:
+                $this->_result_class = 'YouTube_Playlist_Result';
+            break;
+            case YouTube::PLAYLIST_VIDEOS:
+                $this->_result_class = 'YouTube_Video_Result';
+            break;
+            default:
+                throw new Exception('No result type set.');
+        }
+        
         // check to see if data is cached first
         $feed = Kohana::cache($name);
         
@@ -58,33 +81,50 @@ class YouTube_Data {
     }
     
     /**
-     * What kind of data will be returned,
-     * either YouTube::USER_PLAYLISTS, or YouTube::PLAYLIST_VIDEOS
+     * Handles retrieval of metadata.
      *
-     * @var string data type to return
+     * @param   string  meta name
+     * @return  mixed
      */
-    protected $_result_type = '';
+    public function __get($name)
+    {
+        if (array_key_exists($name, $this->_meta))
+        {
+            return $this->_meta[$name];
+        }
+    }
     
     public function find_all()
     {
-        // set the class for the items being returned
-        switch ($this->_result_type)
-        {
-            case YouTube::USER_PLAYLISTS:
-                $result_class = 'YouTube_Playlist_Result';
-            break;
-            case YouTube::PLAYLIST_VIDEOS:
-                $result_class = 'YouTube_Video_Result';
-            break;
-            default:
-                throw new Exception('No result type set.');
-        }
+        $class_name = $this->_result_class;
         
         $data = unserialize($this->_data);
         
         $items = array_slice($data->items, $this->_offset, $this->_limit);
         
-        return new $result_class($items);
+        return new $class_name($items);
+    }
+    
+    public function find($id)
+    {
+        $search_ids = array();
+        
+        $data = unserialize($this->_data);
+        
+        //return $data;
+        foreach ($data->items as $item)
+        {
+            $search_ids[] = ($this->_result_type === YouTube::PLAYLIST_VIDEOS) ?
+                $item->video->id : $item->id;
+        }
+        
+        $index = array_search($id, $search_ids);
+        
+        $class_name = $this->_result_class;
+        
+        $results = new $class_name($data->items);
+        
+        return ($index !== FALSE) ? $results[$index] : $index;
     }
     
     protected $_offset = 0;
