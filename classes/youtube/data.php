@@ -9,13 +9,14 @@
  * @copyright (c) 2010 Rolando Henry
  * @license    http://creativecommons.org/licenses/BSD/
  */
-class YouTube_Data {
+abstract class YouTube_Data {
     
+    // Object info
+    protected $_cache_key;
     protected $_url;
     
-    protected $_data;
-    
-    protected $_meta = array();
+    // pagination info
+    protected $_pagination = array();
     
     /**
      * What kind of data will be returned,
@@ -25,59 +26,68 @@ class YouTube_Data {
      */
     protected $_result_type = '';
     
-    private $_result_class;
-    
-    public function __construct($name, $url)
+    public function __construct($name)
     {
-        // set the class for the items being returned
-        switch ($this->_result_type)
-        {
-            case YouTube::USER_PLAYLISTS:
-                $this->_result_class = 'YouTube_Playlist_Result';
-            break;
-            case YouTube::PLAYLIST_VIDEOS:
-                $this->_result_class = 'YouTube_Video_Result';
-            break;
-            default:
-                throw new Exception('No result type set.');
-        }
+        // set the cache key based on passed name
+        $this->_cache_key = $name;
         
-        // check to see if data is cached first
-        $feed = Kohana::cache($name);
+        // Initialize data
+        $data = $this->_initialize();
         
+        // set meta properties
+        $this->_pagination = array(
+                'total_items'    => $data->totalItems,
+                'items_per_page' => $data->itemsPerPage,
+                'offset'         => $data->startIndex - 1,
+                'limit'          => $data->totalItems
+            );
+    }
+    
+    /**
+     * Initialize the data for the class
+     * Makes an API call if needed
+     *
+     * @return mixed 
+     */
+    protected function _initialize()
+    {
+         // check if a result type is set
+         if ($this->_result_type === NULL)
+         {
+             throw new Exception('No result type set.');
+         }
+ 
+         // check to see if data is cached first
+        $data = Kohana::cache($this->_cache_key);
+
         // Get fresh feed
-        if ($feed === NULL OR ! YouTube::$use_cache)
+        if ($data === NULL OR ! YouTube::$use_cache)
         {
             try {
                 // Remote call the feed url
-                $feed = Remote::get($url);
-                
-                // Cache the response
-                Kohana::cache($name, $feed, 300);
+                $feed = Remote::get($this->_url);
             } catch (Exception $e) {
                 // Do nothing for now
                 // @todo some error checking
                 return FALSE;
             }
-        }
-        
-        $json = json_decode($feed);
-        $data = $json->data;
-        
-        if ($data !== NULL)
-        {
-            // store a copy of the decoded data locally
-            $this->_data = serialize($data);
             
-            // set meta properties
-            $this->_meta = array(
-                    'total_items'    => $data->totalItems,
-                    'items_per_page' => $data->itemsPerPage,
-                    'offset'         => $data->startIndex
-                );
-                
-            $this->_limit = $data->totalItems;
+            $json = json_decode($feed);
+            
+            if ($json !== NULL)
+            {
+                $data = $json->data;
+            }
+            else
+            {
+                return FALSE;
+            }
         }
+
+        // cache the data
+        Kohana::cache($this->_cache_key, $data, 300);
+        
+        return $data;
     }
     
     /**
@@ -94,54 +104,75 @@ class YouTube_Data {
         }
     }
     
-    public function find_all()
+    public function __sleep()
     {
-        $class_name = $this->_result_class;
-        
-        $data = unserialize($this->_data);
-        
-        $items = array_slice($data->items, $this->_offset, $this->_limit);
-        
-        return new $class_name($items);
+        return array('_pagination', '_url', '_cache_key', '_result_type');
     }
     
+    public function __wakeup()
+    {
+        $this->_initialize();
+    }
+    
+    public function offset($num)
+    {
+        $this->_pagination['offset'] = $num;
+        
+        return $this;
+    }
+    
+    public function limit($count)
+    {        
+        $this->_pagination['limit'] = $count;
+        
+        return $this;
+    }
+    
+    /**
+     * Find all related items
+     *
+     * @return YouTube_Result class (depends on result type of this class)
+     */
+    public function find_all()
+    {
+        $result_type = $this->_result_type;
+        
+        $data = $this->_initialize();
+        
+        // paginate items
+        $items = array_slice(
+                $data->items,
+                $this->_pagination['offset'],
+                $this->_pagination['limit']
+            );
+        
+        return new $result_type($items);
+    }
+    
+    /**
+     * Find a specific item
+     *
+     * @param string $id 
+     * @return YouTube_Item (depends on result type of this class)
+     */
     public function find($id)
     {
         $search_ids = array();
         
-        $data = unserialize($this->_data);
+        $data = $this->_initialize();
         
-        //return $data;
         foreach ($data->items as $item)
         {
-            $search_ids[] = ($this->_result_type === YouTube::PLAYLIST_VIDEOS) ?
+            $search_ids[] = ($this->_result_type === YouTube::VIDEO_RESULT) ?
                 $item->video->id : $item->id;
         }
         
-        $index = array_search($id, $search_ids);
+        $index = (is_int($id)) ? $id : array_search($id, $search_ids);
         
-        $class_name = $this->_result_class;
+        $result_type = $this->_result_type;
         
-        $results = new $class_name($data->items);
+        $results = new $result_type($data->items);
         
         return ($index !== FALSE) ? $results[$index] : $index;
-    }
-    
-    protected $_offset = 0;
-    
-    public function offset($num)
-    {
-        $this->_offset = $num;
-        
-        return $this;
-    }
-    
-    protected $_limit;
-    
-    public function limit($count)
-    {        
-        $this->_limit = $count;
-        
-        return $this;
     }
 }

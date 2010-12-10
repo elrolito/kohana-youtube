@@ -12,8 +12,8 @@
 class YouTube_Core {
     
     // YouTube Data types
-    const USER_PLAYLISTS = 'user playlists';
-    const PLAYLIST_VIDEOS = 'playlist videos';
+    const PLAYLIST_RESULT = 'YouTube_Playlist_Result';
+    const VIDEO_RESULT = 'YouTube_Video_Result';
     
     // YouTube API base URL
     const API_URL = 'http://gdata.youtube.com/feeds/api/';
