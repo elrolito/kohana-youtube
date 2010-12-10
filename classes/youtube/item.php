@@ -9,7 +9,7 @@
  * @copyright (c) 2010 Rolando Henry
  * @license    http://creativecommons.org/licenses/BSD/
  */
-class YouTube_Item {
+abstract class YouTube_Item {
     
     protected $_meta = array();
     

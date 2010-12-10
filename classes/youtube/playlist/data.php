@@ -6,8 +6,8 @@ class YouTube_Playlist_Data extends YouTube_Data {
     {
         $this->_url = YouTube::API_URL.'users/'.$user.'/playlists?v=2&alt=jsonc';
         
-        $this->_result_type = YouTube::USER_PLAYLISTS;
+        $this->_result_type = YouTube::PLAYLIST_RESULT;
         
-        parent::__construct('yt_user_'.$user, $this->_url);
+        parent::__construct('yt_user_'.$user);
     }
 }
