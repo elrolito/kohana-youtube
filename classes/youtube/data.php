@@ -102,6 +102,10 @@ abstract class YouTube_Data {
         {
             return $this->_meta[$name];
         }
+        else if (array_key_exists($name, $this->_pagination))
+        {
+            return $this->_pagination[$name];
+        }
     }
     
     public function __sleep()
