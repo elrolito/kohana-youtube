@@ -10,10 +10,17 @@ class YouTube_Video_Item extends YouTube_Item {
     {
         parent::__construct($data);
         
+        // get count
+        try {
+            $view_count = $data->viewCount;
+        } catch (Exception $e) {
+            $view_count = 0;
+        }
+        
         // initialize video properties
         $meta = array(
                 'duration' => $this->sec2hms($data->duration, true),
-                'views' => $data->viewCount
+                'views' => $view_count
             );
         
         // merge extended meta properties with base meta
