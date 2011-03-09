@@ -65,7 +65,7 @@ abstract class YouTube_Data {
         {
             try {
                 // Remote call the feed url
-                $feed = Remote::get($this->_url);
+                $feed = Request::factory($this->_url)->execute()->body();
             } catch (Exception $e) {
                 // Do nothing for now
                 // @todo some error checking
