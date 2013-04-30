@@ -64,8 +64,9 @@ abstract class YouTube_Data {
         if ($data === NULL OR ! YouTube::$use_cache)
         {
             try {
-                // Remote call the feed url
-                $feed = Remote::get($this->_url);
+                // Request the feed url
+                $request = Request::factory($this->_url)->method('GET');
+                $feed = $request->execute();
             } catch (Exception $e) {
                 // Do nothing for now
                 // @todo some error checking
