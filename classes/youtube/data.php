@@ -82,10 +82,10 @@ abstract class YouTube_Data {
             {
                 return FALSE;
             }
+            
+            // cache the data
+            Kohana::cache($this->_cache_key, $data, 300);
         }
-
-        // cache the data
-        Kohana::cache($this->_cache_key, $data, 300);
         
         return $data;
     }
